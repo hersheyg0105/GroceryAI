@@ -1,101 +1,144 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { GroceryInput } from './components/GroceryInput';
+import { GroceryOutput } from './components/GroceryOutput';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [groceryItems, setGroceryItems] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Array<{ name: string; items: string[] }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleCategorize = async () => {
+    // Reset states
+    setError(null);
+    setCopySuccess(false);
+    
+    // Filter out empty items
+    const itemsToSend = groceryItems.filter(item => item.trim());
+    
+    if (itemsToSend.length === 0) {
+      setError('Please enter at least one item');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/categorize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items: itemsToSend }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to categorize items');
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setCategories(data.categories || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setCategories([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!categories.length) return;
+
+    const text = categories
+      .map(category => `${category.name}:\n${category.items.map(item => `- ${item}`).join('\n')}`)
+      .join('\n\n');
+
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      },
+      () => {
+        setError('Failed to copy to clipboard');
+      }
+    );
+  };
+
+  return (
+    <main className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <h1 className="text-2xl font-bold text-center mb-8">Grocery Categorizer</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 md:gap-4 bg-white rounded-lg shadow-md">
+          {/* Left Column - Input Section */}
+          <section className="relative">
+            <div className="p-4">
+              <h2 className="text-xl font-semibold mb-4">Input Section</h2>
+              <div className="min-h-[400px] border border-gray-200 rounded-lg p-4">
+                <GroceryInput onItemsChange={setGroceryItems} />
+              </div>
+            </div>
+            {/* Vertical divider - only visible on md and up screens */}
+            <div className="hidden md:block absolute right-0 top-0 bottom-0 w-[1px] bg-gray-200" />
+          </section>
+
+          {/* Right Column - Output Section */}
+          <section className="border-t md:border-t-0">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Output Section</h2>
+                <button
+                  onClick={handleCopy}
+                  className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
+                    />
+                  </svg>
+                  {copySuccess ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div className="min-h-[400px] border border-gray-200 rounded-lg p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : error ? (
+                  <div className="text-red-500 text-center">{error}</div>
+                ) : (
+                  <GroceryOutput categories={categories} />
+                )}
+              </div>
+            </div>
+          </section>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={handleCategorize}
+            disabled={isLoading || groceryItems.length === 0}
+            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Categorizing...' : 'Categorize Groceries'}
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }
