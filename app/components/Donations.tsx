@@ -111,7 +111,7 @@ export const Donations = () => {
 
   const handleDonate = async () => {
     try {
-      const response = await fetch('/api/create-payment-intent', {
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,15 +121,22 @@ export const Donations = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create payment intent');
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
 
-      const { clientSecret } = await response.json();
-      setClientSecret(clientSecret);
-      setShowPaymentForm(true);
+      const { sessionId } = await response.json();
+      const stripe = await stripePromise;
+
+      if (stripe) {
+        const { error } = await stripe.redirectToCheckout({ sessionId });
+        if (error) {
+          console.error('Stripe redirect error:', error);
+          toast.error(error.message || 'Failed to redirect to Stripe');
+        }
+      }
     } catch (error) {
-      console.error('Payment intent error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create payment intent');
+      console.error('Checkout session error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create checkout session');
     }
   };
 
