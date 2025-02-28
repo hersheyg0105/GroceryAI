@@ -44,9 +44,26 @@ At the bottom of this 2 part screen, there will be a button called "Categorize G
 - handle loading states during payment processing
 - display appropriate error messages using toast notifications
 
+## Stripe integration and webhook setup
+
 ## Initial Strip Setup
 - sign up for a stripe account and get API keys
 - add environment varaibles to .env.local
+
+## Product configuration
+- create a product in stripe with the name "donation"
+
+## Stripe configuration setup
+- create a new directory called config in your project rool
+- inside it, create a file called stripe.ts
+- for the product, create an object that will have a description to show to the users, a price field that will store the product id from stripe
+- This configuration will be used by the frontend and the API routes
+
+## Payment intent api implementation
+- creat a new api route in app/api/create-payment-intent/route.ts
+- import necessary dependencies
+- initialize the stripe client with your secret key and latest API version
+- return appropriate HTTP Status codes and error messages
 
 
 # Documentation
