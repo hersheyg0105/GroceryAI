@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2022-11-15',
+  apiVersion: '2025-02-24.acacia',
 });
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const { amount } = await req.json();
+    const { amount } = await new Response().json();
     console.log('Creating Stripe Checkout session');
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -24,8 +24,8 @@ export async function POST(req: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/donate`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/donate`,
     });
 
     console.log('Checkout session created:', session.id);
@@ -37,6 +37,6 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   return NextResponse.json(null, { status: 405 });
 }

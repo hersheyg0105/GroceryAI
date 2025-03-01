@@ -11,7 +11,7 @@ export default function Home() {
   const [groceryItems, setGroceryItems] = useState<string[]>([]);
   const [categories, setCategories] = useState<Array<{ name: string; items: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; code?: string; details?: any } | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string; details?: unknown } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
   const handleCategorize = async () => {
@@ -44,13 +44,13 @@ export default function Home() {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to categorize items', {
+        const errorData: { error: { message: string } } = await response.json();
+        throw new Error(errorData.error.message || 'Failed to categorize items', {
           cause: errorData.error
         });
       }
 
-      const data = await response.json();
+      const data: { categories: Array<{ name: string; items: string[] }> } = await response.json();
       setCategories(data.categories || []);
     } catch (err) {
       if (err instanceof Error) {
@@ -62,7 +62,7 @@ export default function Home() {
         } else {
           setError({
             message: err.message,
-            ...(err.cause as any)
+            ...(err.cause as { code?: string; details?: unknown })
           });
         }
       } else {
@@ -154,12 +154,7 @@ export default function Home() {
                       <p className="font-semibold">{error.message}</p>
                       {error.code && (
                         <p className="text-sm mt-1 text-red-400">Error code: {error.code}</p>
-                      )}
-                      {process.env.NODE_ENV === 'development' && error.details && (
-                        <pre className="mt-4 text-xs text-left bg-red-50 p-4 rounded overflow-auto">
-                          {JSON.stringify(error.details, null, 2)}
-                        </pre>
-                      )}
+                      )}                      
                     </div>
                   ) : (
                     <GroceryOutput categories={categories} />

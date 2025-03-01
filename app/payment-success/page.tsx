@@ -1,11 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 export default function PaymentSuccess() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PaymentSuccessContent />
+    </Suspense>
+  );
+}
+
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const paymentIntent = searchParams.get('payment_intent');
   const paymentIntentClientSecret = searchParams.get('payment_intent_client_secret');

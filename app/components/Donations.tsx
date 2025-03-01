@@ -14,7 +14,7 @@ import { DONATION_TIERS } from '@/config/stripe';
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-const CheckoutForm = ({ clientSecret, onCancel }: { clientSecret: string; onCancel: () => void }) => {
+const CheckoutForm = ({ onCancel }: { onCancel: () => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +37,9 @@ const CheckoutForm = ({ clientSecret, onCancel }: { clientSecret: string; onCanc
       });
 
       if (error) {
+        console.error('Payment error:', error);
         toast.error(error.message || 'Payment failed');
+        window.location.href = '/payment-error'; // Redirect to error page
       }
     } catch (err) {
       console.error('Payment error:', err);
@@ -91,7 +93,6 @@ const CheckoutForm = ({ clientSecret, onCancel }: { clientSecret: string; onCanc
 export const Donations = () => {
   const [amount, setAmount] = useState(3);
   const [recentlySelected, setRecentlySelected] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
@@ -144,13 +145,13 @@ export const Donations = () => {
     return null;
   }
 
-  if (showPaymentForm && clientSecret) {
+  if (showPaymentForm) {
     return (
       <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
         <Elements 
           stripe={stripePromise} 
           options={{
-            clientSecret,
+            payment_method_types: ['card', 'apple_pay'],
             appearance: {
               theme: 'stripe',
               variables: {
@@ -162,7 +163,6 @@ export const Donations = () => {
           }}
         >
           <CheckoutForm 
-            clientSecret={clientSecret} 
             onCancel={() => setShowPaymentForm(false)} 
           />
         </Elements>
@@ -196,7 +196,7 @@ export const Donations = () => {
 
       {/* Amount Buttons */}
       <div className="grid grid-cols-5 gap-2 mb-8">
-        {Object.entries(DONATION_TIERS).map(([value, tier]) => (
+        {Object.entries(DONATION_TIERS).map(([value]) => (
           <button
             key={value}
             onClick={() => handleAmountClick(Number(value))}

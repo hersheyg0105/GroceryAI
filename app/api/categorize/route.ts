@@ -7,7 +7,7 @@ class APIError extends Error {
     message: string,
     public status: number,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'APIError';
@@ -37,7 +37,7 @@ function validateInput(items: unknown): asserts items is string[] {
 }
 
 // Initialize OpenAI with error handling
-function initializeOpenAI() {
+function initializeOpenAI(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new APIError(
@@ -49,7 +49,7 @@ function initializeOpenAI() {
   return new OpenAI({ apiKey });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     // Initialize OpenAI
     const openai = initializeOpenAI();
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     try {
       const body = await req.json();
       items = body.items;
-    } catch (e) {
+    } catch {
       throw new APIError('Invalid JSON in request body', 400, 'INVALID_JSON');
     }
 
