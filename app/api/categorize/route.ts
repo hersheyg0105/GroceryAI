@@ -1,172 +1,121 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// Custom error class for API-specific errors
-class APIError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code: string,
-    public details?: unknown
-  ) {
-    super(message);
-    this.name = 'APIError';
-  }
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// Input validation
-function validateInput(items: unknown): asserts items is string[] {
-  if (!items) {
-    throw new APIError('No items provided', 400, 'MISSING_ITEMS');
-  }
-  if (!Array.isArray(items)) {
-    throw new APIError('Items must be an array', 400, 'INVALID_FORMAT');
-  }
-  if (items.length === 0) {
-    throw new APIError('Please provide at least one item', 400, 'EMPTY_ITEMS');
-  }
-  if (items.length > 50) {
-    throw new APIError('Maximum 50 items allowed', 400, 'TOO_MANY_ITEMS');
-  }
-  if (!items.every(item => typeof item === 'string')) {
-    throw new APIError('All items must be strings', 400, 'INVALID_ITEM_TYPE');
-  }
-  if (!items.every(item => item.trim())) {
-    throw new APIError('Empty or whitespace-only items are not allowed', 400, 'INVALID_ITEM_CONTENT');
-  }
-}
-
-// Initialize OpenAI with error handling
-function initializeOpenAI(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new APIError(
-      'OpenAI API key not configured',
-      500,
-      'MISSING_API_KEY'
-    );
-  }
-  return new OpenAI({ apiKey });
-}
-
-export async function POST(req: Request): Promise<NextResponse> {
+export async function POST(req: Request) {
   try {
-    // Initialize OpenAI
-    const openai = initializeOpenAI();
+    const { items } = await req.json();
 
-    // Parse and validate request body
-    let items: unknown;
-    try {
-      const body = await req.json();
-      items = body.items;
-    } catch {
-      throw new APIError('Invalid JSON in request body', 400, 'INVALID_JSON');
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Please provide a non-empty array of items' },
+        { status: 400 }
+      );
     }
 
-    // Validate input
-    validateInput(items);
+    const systemPrompt = `You are a grocery categorization assistant expert. Categorize these grocery items into appropriate categories. 
+                        Every single input item MUST appear exactly once in the output, with no items omitted or added. 
 
-    const prompt = `Categorize these grocery items into appropriate categories. Every single input item MUST appear exactly once in the output, with no items omitted or added. Use these categories: snacks, beverages, fruits, vegetables, meats, dairy, pantry, condiments, baking, breakfast, frozen, household.
+                        Use these categories: snacks, beverages, fruits, vegetables, meats, dairy, pantry, condiments, baking, breakfast, frozen, household.
+                        You are not limited to these, you can create others you think fit also. No items will be given category other or miscellaneous.
+                        
+                        - Dairy includes all milk-based products such as milk, cheese, yogurt, paneer, heavy cream, and butter.
+                        - Pantry items are typically dry, shelf-stable goods such as grains, flour, rice, pasta, and canned goods.
+                        - Do NOT classify dairy products (like paneer) under pantry. It must always go under dairy.
 
-Input items:
-${items.join('\n')}
+                        If an item is ambiguous, categorize it based on its primary ingredient. 
+                        If needed, create additional categories, but **never use 'other' or 'miscellaneous'**.`;
 
-Format your response as a list of categories. Only include categories that have items. Keep the original item names exactly as provided. Each category should end with a blank line.`;
+    const userPrompt = `Categorize these grocery items into appropriate categories. Input items: ${items.join('\n')}`;
 
-    // Make API call with timeout
-    const response = await Promise.race([
-      openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful grocery categorization assistant. You must categorize every single input item, with no omissions.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new APIError('Request timed out', 504, 'TIMEOUT')), 10000)
-      )
-    ]) as OpenAI.Chat.Completions.ChatCompletion;
+    const assistantPrompt = `Ensure that every new category starts on a new line with a blank line before it. 
+                          Do not put hyphens or bullet points before category names, only before the items.
+                          The first letter of each category name must be returned capitalized.
+                          All items must be lowercase. If an item is misspelled, correct it.
+                          Do not assume items belong to 'meats' unless explicitly stated (e.g., chicken, beef, pork).
+                          If an item is commonly stored in multiple categories, default to the most logical category (e.g., 'beans' should be under 'pantry', not meats).
+                          
+                          **STRICT RULE: No category should appear more than once.** 
 
-    if (!response.choices[0]?.message?.content) {
-      throw new APIError('No response from OpenAI', 500, 'EMPTY_RESPONSE');
-    }
+                          Before finalizing the response:
+                          - **First, list all the categories needed.**
+                          - **Then, place each item into its correct category.**
+                          - **Ensure all items for the same category are grouped together.**
+                          - **Do a final check to confirm that each category appears exactly once.**`;
+
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+        {
+          role: 'assistant',
+          content: assistantPrompt,
+        },
+      ],
+      temperature: 0.3, // Lower temperature for more consistent categorization
+    });
+
+    console.log("response: ", response);
 
     const categorizedText = response.choices[0].message.content;
-    
+    console.log("response.choices[0]: ", response.choices[0]);
+    console.log("categorizedText: ", categorizedText)
+
+    if (!categorizedText) {
+      throw new Error('Failed to retrieve categorized text from the response.');
+    }
+
     // Parse the response into categories
     const categories = categorizedText
-      .split('\n\n')
-      .filter(section => section.trim())
-      .map(section => {
-        const [categoryName, ...items] = section.split('\n');
-        return {
-          name: categoryName.replace(':', ''),
-          items: items
-            .filter(item => item.startsWith('- '))
-            .map(item => item.replace('- ', ''))
-        };
-      });
+    .split('\n\n')
+    .filter(section => section.trim())
+    .map(section => {
+      const lines = section.split('\n').filter(line => line.trim());
+      // const categoryName = lines[0].replace(':', '').trim();
+      const categoryName = lines[0].replace(':', '').replace(/-/g, '').trim();
+      // const items = lines.slice(1).map(item => item.trim()).filter(item => item);
+      const items = lines.slice(1)
+        .map(item => item.replace(/-/g, '').trim()) // Remove hyphens from items
+        .filter(item => item); // Remove empty items
+
+      return {
+        name: categoryName,
+        items: items
+      };
+    });
+
+      console.log("categories: ", categories)
 
     // Verify all input items are present in the output
     const outputItems = categories.flatMap(cat => cat.items);
+    console.log("outputItems: ", outputItems)
     const missingItems = items.filter(item => !outputItems.includes(item));
+    console.log("missingItems: ", missingItems)
 
-    if (missingItems.length > 0) {
-      // If any items are missing, add them to a "miscellaneous" category
-      categories.push({
-        name: 'miscellaneous',
-        items: missingItems
-      });
-    }
+    // if (missingItems.length > 0) {
+    //   // If any items are missing, add them to a "miscellaneous" category
+    //   categories.push({
+    //     name: 'miscellaneous',
+    //     items: missingItems
+    //   });
+    // }
 
     return NextResponse.json({ categories });
   } catch (error) {
     console.error('Error:', error);
-
-    // Handle known API errors
-    if (error instanceof APIError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-          }
-        },
-        { status: error.status }
-      );
-    }
-
-    // Handle OpenAI API errors
-    if (error instanceof OpenAI.APIError) {
-      return NextResponse.json(
-        {
-          error: {
-            message: 'OpenAI API error',
-            code: 'OPENAI_ERROR',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-          }
-        },
-        { status: error.status || 500 }
-      );
-    }
-
-    // Handle unknown errors
     return NextResponse.json(
-      {
-        error: {
-          message: 'An unexpected error occurred',
-          code: 'INTERNAL_ERROR',
-          details: process.env.NODE_ENV === 'development' ? error : undefined
-        }
-      },
+      { error: 'Failed to categorize items' },
       { status: 500 }
     );
   }
