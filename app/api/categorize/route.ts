@@ -76,26 +76,31 @@ export async function POST(req: Request) {
       throw new Error('Failed to retrieve categorized text from the response.');
     }
 
-    // Parse the response into categories
-    const categories = categorizedText
-    .split('\n\n')
-    .filter(section => section.trim())
-    .map(section => {
-      const lines = section.split('\n').filter(line => line.trim());
-      // const categoryName = lines[0].replace(':', '').trim();
-      const categoryName = lines[0].replace(':', '').replace(/-/g, '').trim();
-      // const items = lines.slice(1).map(item => item.trim()).filter(item => item);
-      const items = lines.slice(1)
-        .map(item => item.replace(/-/g, '').trim()) // Remove hyphens from items
-        .filter(item => item); // Remove empty items
+    const categoriesMap = new Map(); // Use a Map to store categories without duplicates
 
-      return {
-        name: categoryName,
-        items: items
-      };
-    });
+    categorizedText
+      .split('\n\n') // Split by blank lines between categories
+      .filter(section => section.trim()) // Remove empty sections
+      .forEach(section => {
+        const lines = section.split('\n').filter(line => line.trim());
+        const categoryName = lines[0].replace(':', '').replace(/-/g, '').trim();
+        const items = lines.slice(1)
+          .map(item => item.replace(/-/g, '').trim()) // Remove hyphens from items
+          .filter(item => item); // Remove empty items
 
-      console.log("categories: ", categories)
+        if (categoriesMap.has(categoryName)) {
+          // If the category already exists, merge the new items into it
+          categoriesMap.get(categoryName).push(...items);
+        } else {
+          // Otherwise, create a new category
+          categoriesMap.set(categoryName, items);
+        }
+      });
+
+    // Convert Map to an array of objects
+    const categories = Array.from(categoriesMap, ([name, items]) => ({ name, items }));
+
+    console.log(categories);
 
     // Verify all input items are present in the output
     const outputItems = categories.flatMap(cat => cat.items);
