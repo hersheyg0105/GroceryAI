@@ -4,10 +4,9 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
 });
-
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const { amount } = await new Response().json();
+    const { amount } = await req.json();
     console.log('Creating Stripe Checkout session');
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -24,8 +23,8 @@ export async function POST() {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/donate`,
+      success_url: `${req.headers.get('origin')}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get('origin')}/donate`,
     });
 
     console.log('Checkout session created:', session.id);
