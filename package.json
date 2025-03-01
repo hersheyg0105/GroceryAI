@@ -11,6 +11,7 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^3.1.1",
     "@stripe/stripe-js": "^5.7.0",
+    "anchor-pki": "^0.3.2",
     "next": "15.2.0",
     "openai": "^4.85.4",
     "react": "^19.0.0",

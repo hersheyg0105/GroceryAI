@@ -1,7 +1,11 @@
-import type { NextConfig } from "next";
+// next.config.mjs
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+import autoCert from "anchor-pki/auto-cert/integrations/next";
 
-export default nextConfig;
+const withAutoCert = autoCert({
+  enabledEnv: "development",
+});
+
+const nextConfig = {};
+
+export default withAutoCert(nextConfig);

@@ -46,6 +46,12 @@ export async function POST(req: Request) {
         // Handle failed payment
         break;
 
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Payment succeeded for session:', session.id);
+        // Handle successful payment here
+        break;
+
       // Add other webhook events as needed
       default:
         console.log(`Unhandled event type: ${event.type}`);
