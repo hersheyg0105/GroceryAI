@@ -85,8 +85,8 @@ export default function Home() {
         .map(category => `${category.name}:\n${category.items.map(item => `- ${item}`).join('\n')}`)
         .join('\n\n');
 
-      // Ensure text is plain and not URL encoded
-      const plainText = decodeURIComponent(text);
+      // Use unescaped text to ensure proper formatting
+      const plainText = text.replace(/%0A/g, '\n').replace(/%20/g, ' ').replace(/%3A/g, ':');
 
       await navigator.clipboard.writeText(plainText);
       setCopySuccess(true);
