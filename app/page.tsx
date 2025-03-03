@@ -116,9 +116,20 @@ export default function Home() {
             </section>
           </ErrorBoundary>
 
+          {/* Button for Mobile View */}
+          <div className="flex justify-center mt-6 md:hidden mb-6">
+            <button
+              onClick={handleCategorize}
+              disabled={isLoading || groceryItems.length === 0}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Categorizing...' : 'Categorize Groceries'}
+            </button>
+          </div>
+
           {/* Right Column - Output Section */}
           <ErrorBoundary>
-            <section className="border-t md:border-t-0">
+            <section className="border-t md:border-t-0 pb-6 md:pb-0">
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Output Section</h2>
@@ -165,7 +176,8 @@ export default function Home() {
           </ErrorBoundary>
         </div>
 
-        <div className="flex justify-center mt-6">
+        {/* Button for Desktop View */}
+        <div className="hidden md:flex justify-center mt-6">
           <button
             onClick={handleCategorize}
             disabled={isLoading || groceryItems.length === 0}
