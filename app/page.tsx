@@ -81,16 +81,23 @@ export default function Home() {
     if (!categories.length) return;
   
     try {
-      // Properly format the text
+      // Format the text properly
       const text = categories
         .map(category => `${category.name}:\n${category.items.map(item => `- ${item}`).join('\n')}`)
         .join('\n\n');
   
-      // Force plain text by removing potential URL encodings
-      const plainText = decodeURIComponent(text); // Decode any accidental encodings
+      // ✅ Create a temporary textarea element to ensure pure plain text copying
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
   
-      // Copy using Clipboard API
-      await navigator.clipboard.writeText(plainText);
+      // ✅ Select & Copy
+      textArea.select();
+      textArea.setSelectionRange(0, textArea.value.length); // For iOS compatibility
+      document.execCommand('copy');
+  
+      // ✅ Remove the textarea element
+      document.body.removeChild(textArea);
   
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
