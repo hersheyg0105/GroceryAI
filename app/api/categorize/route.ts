@@ -39,6 +39,15 @@ export async function POST(req: Request) {
                           If an item is commonly stored in multiple categories, default to the most logical category (e.g., 'beans' should be under 'pantry', not meats).
                           
                           **STRICT RULE: No category should appear more than once.** 
+                          Each category should be written on a new line without any symbols or dashes.
+                          Under each category, list the items with a hyphen before them.
+                          There must be a blank line between each category.
+                          DO NOT add extra symbols like "---" or colons (":").
+                          DO NOT list categories separately before their items.
+
+                          A correct content output looks like: 
+                          "CategoryName1\n" + "item1" + "item2" + "\n" + "CategoryName2\n" + "item3" + "item3" + "\n" ... and so forth
+
 
                           Before finalizing the response:
                           - **First, list all the categories needed.**
@@ -66,6 +75,7 @@ export async function POST(req: Request) {
       temperature: 0.3, // Lower temperature for more consistent categorization
     });
 
+    console.log()
     console.log("response: ", response);
 
     const categorizedText = response.choices[0].message.content;
