@@ -79,16 +79,19 @@ export default function Home() {
 
   const handleCopy = async () => {
     if (!categories.length) return;
-
+  
     try {
+      // Properly format the text
       const text = categories
         .map(category => `${category.name}:\n${category.items.map(item => `- ${item}`).join('\n')}`)
         .join('\n\n');
-
-      // Use unescaped text to ensure proper formatting
-      const plainText = text.replace(/%0A/g, '\n').replace(/%20/g, ' ').replace(/%3A/g, ':');
-
+  
+      // Force plain text by removing potential URL encodings
+      const plainText = decodeURIComponent(text); // Decode any accidental encodings
+  
+      // Copy using Clipboard API
       await navigator.clipboard.writeText(plainText);
+  
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
