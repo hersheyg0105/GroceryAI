@@ -85,7 +85,10 @@ export default function Home() {
         .map(category => `${category.name}:\n${category.items.map(item => `- ${item}`).join('\n')}`)
         .join('\n\n');
 
-      await navigator.clipboard.writeText(text);
+      // Ensure text is plain and not URL encoded
+      const plainText = decodeURIComponent(text);
+
+      await navigator.clipboard.writeText(plainText);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
